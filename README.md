@@ -4,6 +4,10 @@ CLI tool for [Maxim SDK](https://github.com/analogdevicesinc/msdk.git) project m
 
 Create projects and run build/utility tasks from the command line.
 
+> [!WARNING]  
+> Linux is the only supported platform right now!
+> I plan on making platform-agnostic soon :)
+
 ## Requirements
 
 - Python >=3.12
