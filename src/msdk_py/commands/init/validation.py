@@ -92,10 +92,7 @@ def validate_proj_name(name: str, parent_dir: Path, *, allow_cwd: bool) -> None:
     if not is_cwd:
         ensure_conventional_path_name(name, desc="project", is_dir=True)
     elif not allow_cwd:
-        msg = (
-            "cannot create project in: [value].[/]\n\n[note]note:[/] project name cannot "
-            "be current working directory (use [var]--allow-cwd[/] to allow this)"
-        )
+        msg = "cannot create project in current working directory: [path].[/] (use [var]--allow-cwd[/] to allow this)"
         raise ValidationError(msg)
     else:
         return

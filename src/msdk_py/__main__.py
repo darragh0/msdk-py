@@ -3,7 +3,7 @@ import traceback
 
 from .cli import mkparser
 from .common.display import cerr
-from .common.error import MsdkError, ValidationError
+from .common.error import CannotProceedError, MissingToolError, MsdkError, ValidationError
 
 
 def main() -> None:
@@ -12,7 +12,7 @@ def main() -> None:
 
     try:
         args.run_cmd(args)
-    except ValidationError as e:
+    except (ValidationError, CannotProceedError, MissingToolError) as e:
         cerr(str(e), exit_code=1)
     except MsdkError as e:
         cerr(str(e))

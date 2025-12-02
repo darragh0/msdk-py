@@ -100,7 +100,7 @@ def validate_maxim_path() -> Path:
     """
 
     env_tip = (
-        "set it to your MaximSDK installation directory (ideally in [file].bashrc[/] or [file].zshrc[/])\n"
+        "set it to your MaximSDK installation directory (ideally in [path].bashrc[/] or [path].zshrc[/])\n"
         "  E.g. -> 'export MAXIM_PATH=\"$HOME/MaximSDK\"' >> [path]$HOME/.bashrc[/] "
         "&& [magenta]source[/] [path]$HOME/.bashrc[/]"
     )
@@ -141,5 +141,22 @@ def ensure_conventional_path_name(name: str, *, desc: str = "file", is_dir: bool
             f"invalid {desc} name: [value]{name}[/]\n\n"
             f"[note]note:[/] {desc} name must start with a letter and contain only letters, "
             "numbers, hyphens, and underscores"
+        )
+        raise ValidationError(msg)
+
+
+def ensure_proj_dir() -> None:
+    """
+    Ensure cwd is the project directory (with `.msdk-py-proj` marker file).
+
+    Raises:
+        ValidationError: If cwd is not the project directory
+    """
+
+    cwd = Path.cwd()
+    if not (cwd / ".msdk-py-proj").is_file():
+        msg = (
+            f"current directory is not a msdk-py project directory: [path]{cwd}[/]\n\n"
+            "[tip]tip:[/] run [var]msdk init . --allow-cwd[/] to create a new project in the current directory"
         )
         raise ValidationError(msg)

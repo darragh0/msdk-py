@@ -6,6 +6,7 @@ import subprocess as subproc
 from pathlib import Path
 
 from msdk_py.common.error import CannotProceedError, MissingToolError, MsdkError, ValidationError
+from msdk_py.common.utils import dir_is_empty
 from msdk_py.common.validation import ensure_exists
 
 
@@ -28,22 +29,11 @@ def _ensure_template_files_exist(maxim_path: Path, target: str, template: str) -
     template_dir = maxim_path / "Examples" / target / template
 
     ensure_exists(template_dir, f"template [path]{template}[/] for [value]{target}[/]", check4similar=all_templates_dir)
-    ensure_exists(template_dir / "Makefile", "template [file]Makefile[/]")
-    ensure_exists(template_dir / "main.c", "template [file]main.c[/]")
-    ensure_exists(template_dir / "project.mk", "template [file]project.mk[/]")
+    ensure_exists(template_dir / "Makefile", "template [path]Makefile[/]")
+    ensure_exists(template_dir / "main.c", "template [path]main.c[/]")
+    ensure_exists(template_dir / "project.mk", "template [path]project.mk[/]")
 
     return template_dir
-
-
-def _rename_old_if_exists(path: Path) -> None:
-    """Rename path if it already exists.
-
-    Args:
-        path: Path to rename
-    """
-
-    if path.exists():
-        path.rename(path.with_suffix(".old"))
 
 
 def _mk_marker_file(output_dir: Path) -> None:
@@ -56,8 +46,8 @@ def _mk_marker_file(output_dir: Path) -> None:
     marker_file = output_dir / ".msdk-py-proj"
     # Don't allow initialization if marker file already exists
     if marker_file.is_file():
-        msg = "cannot initialize project: [file].msdk-py-proj[/] file already exists"
-        raise ValidationError(msg)
+        msg = "cannot initialize project: [path].msdk-py-proj[/] file already exists"
+        raise CannotProceedError(msg)
 
     # Create file or update mod time for msdk-py marker file (for later locating project dir)
     marker_file.touch()
@@ -103,30 +93,36 @@ def _copy_template_files(
     tem_srcs = (template_dir / f for f in ("Makefile", "main.c", "project.mk"))
     out_dests = (output_dir / f for f in ("Makefile", "src/main.c", "project.mk"))
 
+    project_mk_copied = False
     for tem_src, out_dest in zip(tem_srcs, out_dests, strict=True):
-        if is_cwd:
-            _rename_old_if_exists(out_dest)
-        shutil.copy2(tem_src, out_dest)
+        if not out_dest.exists():
+            shutil.copy2(tem_src, out_dest)
+            if out_dest.name == "project.mk":
+                project_mk_copied = True
 
-    if with_git:
-        (output_dir / "include" / ".gitkeep").touch()
+    # check if with git and also if inc_out is empty
+    if with_git and dir_is_empty(inc_out):
+        (inc_out / ".gitkeep").touch()
 
-    mk_out = output_dir / "project.mk"
-    mk_out_lines = mk_out.read_text().splitlines()[:-1]  # Exclude "# Add your config here!" line
-    mk_out_lines.extend(
-        [
-            f"PROJECT={output_dir.resolve().name}",
-            f"BOARD={bsp}",
-            f"TARGET={target}\n",
-            "# Add any additional configs here!\n",
-        ]
-    )
-    mk_out.write_text("\n".join(mk_out_lines))
+    if project_mk_copied:
+        mk_out = output_dir / "project.mk"
+        mk_out_lines = mk_out.read_text().splitlines()[:-1]  # Exclude "# Add your config here!" line
+        mk_out_lines.extend(
+            [
+                f"PROJECT={output_dir.resolve().name}",
+                f"BOARD={bsp}",
+                f"TARGET={target}\n",
+                "# Add any additional configs here!\n",
+            ]
+        )
+        mk_out.write_text("\n".join(mk_out_lines))
 
     if include_vscode:
         vscode_src = template_dir / ".vscode"
         vscout_out = output_dir / ".vscode"
-        shutil.copytree(vscode_src, vscout_out)
+        if not vscout_out.exists():
+            shutil.copytree(vscode_src, vscout_out)
+            _update_vscode_bsp(vscout_out, bsp)
 
 
 def _update_vscode_bsp(vscode_dir: Path, bsp: str) -> None:
@@ -141,7 +137,7 @@ def _update_vscode_bsp(vscode_dir: Path, bsp: str) -> None:
     """
 
     settings_file = vscode_dir / "settings.json"
-    ensure_exists(settings_file, "template [file].vscode/settings.json[/]")
+    ensure_exists(settings_file, "template [path].vscode/settings.json[/]")
 
     with settings_file.open() as f:
         settings = json.load(f)
@@ -173,14 +169,14 @@ def _write_git_ignore(output_dir: Path, *, vscode: bool) -> None:
     (output_dir / ".gitignore").write_text(cont)
 
 
-def _init_git(output_dir: Path, *, reinit_git: bool) -> None:
+def _init_git(output_dir: Path, *, is_cwd: bool) -> None:
     """Initialize git repository in output directory.
 
     Args:
         output_dir: Path to output directory
 
     Keyword Args:
-        reinit_git: Whether to reinitialize existing git repository (if it exists)
+        is_cwd: Whether output directory is current working directory
 
     Raises:
         MissingToolError: If git is not installed
@@ -188,18 +184,19 @@ def _init_git(output_dir: Path, *, reinit_git: bool) -> None:
     """
 
     out_git = output_dir / ".git"
+    if is_cwd and out_git.exists():
+        return
 
     if out_git.is_file():
-        msg = "cannot initialize git repository: invalid [file].git[/] file exists"
+        msg = "cannot initialize git repository: invalid [path].git[/] file exists"
         raise CannotProceedError(msg)
 
-    if out_git.is_dir() and not reinit_git:
-        msg = "cannot initialize git repository: [file].git[/] directory exists"
+    if out_git.is_dir():
+        msg = "cannot initialize git repository: [path].git[/] directory exists"
         raise CannotProceedError(msg)
 
     if (gitpath := shutil.which("git")) is not None:
         try:
-            # Should reinit existing git repo too
             _ = subproc.run(  # noqa: S603
                 [gitpath, "init"],
                 check=True,
@@ -207,7 +204,7 @@ def _init_git(output_dir: Path, *, reinit_git: bool) -> None:
                 capture_output=True,
             )
         except subproc.CalledProcessError as e:
-            msg = "cannot initialize git repository: [command]git init[/] failed"
+            msg = "cannot initialize git repository: [var]git init[/] failed"
             raise CannotProceedError(msg) from e
     else:
         msg = "cannot initialize git repository: [var]git[/] is not installed"
@@ -224,7 +221,6 @@ def gen_proj(
     include_vscode: bool,
     include_readme: bool,
     init_git: bool,
-    reinit_git: bool,
 ) -> None:
     """Generate project from MaximSDK example.
 
@@ -239,7 +235,6 @@ def gen_proj(
         include_vscode: Include VSCode configuration
         include_readme: Create README.md
         include_git: Initialize git repository
-        reinit_git: Reinitialize existing git repository if it exists
 
     Raises:
         ValidationError: If example does not exist
@@ -259,22 +254,20 @@ def gen_proj(
             with_git=init_git,
         )
 
-        if include_vscode:
-            _update_vscode_bsp(output_dir / ".vscode", bsp)
-
         if include_readme:
             readme = output_dir / "README.md"
-            readme.write_text(f"# {output_dir.resolve().name}\n")
+            if not readme.exists():
+                readme.write_text(f"# {output_dir.resolve().name}\n")
 
         if init_git:
-            _init_git(output_dir, reinit_git=reinit_git)
+            _init_git(output_dir, is_cwd=is_cwd)
             _write_git_ignore(output_dir, vscode=include_vscode)
 
     except OSError as e:
-        if output_dir.exists():
+        if output_dir.exists() and not is_cwd:
             shutil.rmtree(output_dir)
         raise MsdkError(e) from e
-    except ValidationError:
-        if output_dir.exists():
+    except (ValidationError, CannotProceedError, MissingToolError):
+        if output_dir.exists() and not is_cwd:
             shutil.rmtree(output_dir)
         raise

@@ -42,14 +42,8 @@ class InitCommand(BaseCommand):
         arg("--template", help=template_help, default=DEFAULT_TEMPLATE, metavar="TEM")
 
         arg("--no-vscode", action="store_false", help="Don't include VSCode configuration", dest="include_vscode")
-        arg("--no-readme", action="store_false", help="Don't create [file]README.md[/]", dest="include_readme")
+        arg("--no-readme", action="store_false", help="Don't create [italic]README.md[/]", dest="include_readme")
         arg("--no-git", action="store_false", help="Don't initialize git repository", dest="init_git")
-        arg(
-            "--reinit-git",
-            action="store_true",
-            help="Reinitialize existing git repository if it exists",
-            dest="reinit_git",
-        )
         arg(
             "--allow-cwd",
             action="store_true",
@@ -80,7 +74,6 @@ class InitCommand(BaseCommand):
             include_vscode=args.include_vscode,
             include_readme=args.include_readme,
             init_git=args.init_git,
-            reinit_git=args.reinit_git,
         )
 
-        cout(f"Initialized project [proj]{args.project_name}[/] at [path]{proj_dir}[/]")
+        cout(f"[success]•[/] Initialized project [proj]{proj_dir.name}[/] at [path]{proj_dir}[/]")

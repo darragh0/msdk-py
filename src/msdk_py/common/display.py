@@ -25,7 +25,7 @@ RichHelpFormatter.styles.update(
 # Custom rich tags
 _APP_THEME = Theme(
     {
-        "success": "bright_green",
+        "success": "bright_green bold",
         "error": "bold bright_red",
         "path": "cyan",
         "var": "cyan",
