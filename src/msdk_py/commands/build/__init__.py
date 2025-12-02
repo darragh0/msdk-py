@@ -1,8 +1,7 @@
-"""init -- create MSDK project"""
+"""build -- Build MSDK project using MaximSDK GCC toolchain."""
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, override
 
 from msdk_py.commands.base import BaseCommand
@@ -31,22 +30,13 @@ class BuildCommand(BaseCommand):
         ensure_proj_dir()
         maxim_path = validate_maxim_path()
 
-        out: str | None
+        project_str: str
         if args.out is None or args.out.strip() != ".":
-            out = None  # Falls back to whatever is in project.mk
+            project_str = ""  # Excluded -- make falls back to whatever is in project.mk
         else:
             ensure_conventional_path_name(args.out, desc="project", is_dir=True)
-            out = args.out
+            project_str = f" PROJECT={args.out}"
 
-        cmd = [
-            "make",
-            "-r",
-            "-j",
-            "8",
-            "--output-sync=target",
-            "--no-print-directory",
-            f"{'' if out is None else ' PROJECT={out}'}",
-        ]
-
+        cmd = ["make", "-r", "-j", "8", "--output-sync=target", "--no-print-directory", project_str]
         toolchain_bin = str(find_maxim_toolchain(maxim_path))
         run_trusted_cmd(cmd, add2path=[toolchain_bin])

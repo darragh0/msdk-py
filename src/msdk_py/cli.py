@@ -6,7 +6,7 @@ from . import __version__
 from .commands import COMMANDS
 
 
-def add_help(parser: ArgumentParser) -> None:
+def add_parser_help(parser: ArgumentParser) -> None:
     parser.add_argument(
         "-h",
         "--help",
@@ -23,7 +23,7 @@ def mkparser() -> ArgumentParser:
         add_help=False,
     )
 
-    add_help(parser)
+    add_parser_help(parser)
 
     parser.add_argument(
         "-V",
@@ -43,7 +43,7 @@ def mkparser() -> ArgumentParser:
             add_help=False,
             aliases=cmd.aliases or (),
         )
-        add_help(cmd_parser)
+        add_parser_help(cmd_parser)
         cmd.configure_parser(cmd_parser)
         cmd_parser.set_defaults(run_cmd=cmd.execute)
 

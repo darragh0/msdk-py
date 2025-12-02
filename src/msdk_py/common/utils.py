@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import subprocess as sproc
 import threading
 from os import environ
 from pathlib import Path
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
 
-from rich.console import Console
 from rich.text import Text
 
 from msdk_py.common.error import CannotProceedError, MissingToolError
@@ -12,7 +13,8 @@ from msdk_py.common.validation import ensure_exists
 
 from .display import cout
 
-console = Console()
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def dir_is_empty(path: Path) -> bool:
@@ -98,4 +100,4 @@ def run_trusted_cmd(cmd: list[str], *, add2path: list[str] | None = None) -> Non
         msg = f"command returned non-zero exit code: {errno}"
         raise CannotProceedError(msg)
 
-    cout("[success]Command succeeded[/]")
+    cout("[success]Succeeded[/]")

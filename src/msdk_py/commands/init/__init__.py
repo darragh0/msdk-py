@@ -1,4 +1,4 @@
-"""init -- create MSDK project"""
+"""init -- Create MSDK project"""
 
 from __future__ import annotations
 
