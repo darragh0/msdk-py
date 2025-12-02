@@ -1,8 +1,9 @@
-from sys import exit as sexit
+import sys
+import traceback
 
 from .cli import mkparser
 from .common.display import cerr
-from .common.error import MsdkError
+from .common.error import MsdkError, ValidationError
 
 
 def main() -> None:
@@ -11,12 +12,17 @@ def main() -> None:
 
     try:
         args.run_cmd(args)
-    except MsdkError as e:
+    except ValidationError as e:
         cerr(str(e), exit_code=1)
+    except MsdkError as e:
+        cerr(str(e))
+        if input("See traceback? (y/n): ").strip().lower() == "y":
+            cerr(traceback.format_exc())
+        sys.exit(2)
     except KeyboardInterrupt:
-        sexit(130)
+        sys.exit(130)
     else:
-        sexit(0)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

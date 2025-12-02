@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from msdk_py.commands.init.defaults import DEFAULT_BSP
 from msdk_py.common.error import ValidationError
-from msdk_py.common.validation import ensure_exists
+from msdk_py.common.validation import ensure_conventional_path_name, ensure_exists
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,29 +74,36 @@ def validate_bsp(target: str, bsp: str, maxim_path: Path) -> None:
         raise ValidationError(msg) from e
 
 
-def validate_proj_name(name: str, parent_dir: Path) -> None:
+def validate_proj_name(name: str, parent_dir: Path, *, allow_cwd: bool) -> None:
     """Validate project name is valid and doesn't exist.
 
     Args:
         name (str): Project name to validate
         parent_dir (Path): Parent directory of project
 
+    Keyword Arguments:
+        allow_cwd: Allow project name to be current working directory (when name = ".")
+
     Raises:
         ValidationError: If project name is invalid or already exists
     """
 
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
+    is_cwd = name.strip() == "."
+    if not is_cwd:
+        ensure_conventional_path_name(name, desc="project", is_dir=True)
+    elif not allow_cwd:
         msg = (
-            f"invalid project name: [value]{name}[/]\n\n"
-            "[note]note:[/] project name must start with a letter and contain only letters, "
-            "numbers, hyphens, and underscores"
+            "cannot create project in: [value].[/]\n\n[note]note:[/] project name cannot "
+            "be current working directory (use [var]--allow-cwd[/] to allow this)"
         )
         raise ValidationError(msg)
+    else:
+        return
 
     proj_path = parent_dir / name
     if proj_path.exists():
         msg = (
-            f"project directory already exists: [path]{proj_path}[/]\n\n"
+            f"directory already exists: [path]{proj_path}[/]\n\n"
             "[tip]tip:[/] choose a different name or remove the existing directory"
         )
         raise ValidationError(msg)

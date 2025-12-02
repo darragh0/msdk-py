@@ -54,7 +54,7 @@ class _ErrConsole(RichConsole):
     def __call__(
         self,
         *objects: Any,  # noqa: ANN401
-        exit_code: int | None = 1,
+        exit_code: int | None = None,
         **kwargs: Unpack[RichConsolePrintKwargs],
     ) -> None:
         self.print("[error]error:[/]", *objects, **kwargs)

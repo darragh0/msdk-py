@@ -39,5 +39,8 @@ class BaseCommand(ABC):
 
         Args:
             args: Parsed command-line arguments
+
+        Raises:
+            MsdkError: If the command fails
         """
         ...

@@ -43,6 +43,12 @@ class InitCommand(BaseCommand):
 
         arg("--no-vscode", action="store_false", help="Don't include VSCode configuration", dest="include_vscode")
         arg("--no-readme", action="store_false", help="Don't create [file]README.md[/]", dest="include_readme")
+        arg(
+            "--allow-cwd",
+            action="store_true",
+            help="Allow project to be created in current directory",
+            dest="allow_cwd",
+        )
 
     @override
     def execute(self, args: Namespace) -> None:
@@ -53,11 +59,13 @@ class InitCommand(BaseCommand):
         maxim_path = validate_maxim_path()
         validate_target(target, maxim_path)
         validate_bsp(target, args.bsp, maxim_path)
-        validate_proj_name(args.project_name, Path.cwd())
+
+        proj_name = args.project_name.strip()
+        validate_proj_name(proj_name, Path.cwd(), allow_cwd=args.allow_cwd)
 
         gen_proj(
             maxim_path=maxim_path,
-            output_dir=Path.cwd() / args.project_name,
+            output_dir=Path.cwd() / proj_name,
             target=target,
             bsp=args.bsp,
             template=args.template,

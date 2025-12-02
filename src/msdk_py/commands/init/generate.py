@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import json
 import shutil
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from msdk_py.common.error import MsdkError, ValidationError
 from msdk_py.common.validation import ensure_exists
 
-if TYPE_CHECKING:
-    from pathlib import Path
 
-
-def _ensure_template_exists(maxim_path: Path, target: str, template: str) -> Path:
+def _ensure_template_files_exist(maxim_path: Path, target: str, template: str) -> Path:
     """Ensure template (example) directory exists and has the required files.
 
     Args:
@@ -37,6 +34,17 @@ def _ensure_template_exists(maxim_path: Path, target: str, template: str) -> Pat
     return template_dir
 
 
+def _rename_old_if_exists(path: Path) -> None:
+    """Rename path if it already exists.
+
+    Args:
+        path: Path to rename
+    """
+
+    if path.exists():
+        path.rename(path.with_suffix(".old"))
+
+
 def _copy_template_files(
     template_dir: Path,
     output_dir: Path,
@@ -44,6 +52,7 @@ def _copy_template_files(
     target: str,
     bsp: str,
     include_vscode: bool,
+    is_cwd: bool,
 ) -> None:
     """Copy files from template (example) directory to output directory.
 
@@ -55,22 +64,38 @@ def _copy_template_files(
         target: Target (e.g., 'MAX32655')
         bsp: Board support package to use (e.g., 'EvKit_V1')
         include_vscode: Include VSCode configuration
+        is_cwd: Template files to be copied to current directory
 
     Raises:
         ValidationError: If example does not exist
     """
 
-    shutil.copy2(template_dir / "Makefile", output_dir / "Makefile")
-    shutil.copy2(template_dir / "main.c", output_dir / "main.c")
+    if not is_cwd:
+        output_dir.mkdir(parents=True)
 
-    output_proj_mk = output_dir / "project.mk"
-    shutil.copy2(template_dir / "project.mk", output_proj_mk)
+    # Create file or update mod time for msdk-py marker file (for later locating project dir)
+    (output_dir / ".msdk-py-proj").touch()
 
-    output_proj_mk_lines = output_proj_mk.read_text().splitlines()[:-1]  # Exclude "# Add your config here!" line
-    output_proj_mk_lines.append(f"BOARD={bsp}")
-    output_proj_mk_lines.append(f"TARGET={target}\n")
-    output_proj_mk_lines.append("# Add any additional configs here!\n")
-    output_proj_mk.write_text("\n".join(output_proj_mk_lines))
+    tem_srcs = (template_dir / f for f in ("Makefile", "main.c", "project.mk"))
+    out_dests = (output_dir / f for f in ("Makefile", "src/main.c", "project.mk"))
+
+    (output_dir / "src").mkdir(exist_ok=True)
+
+    for tem_src, out_dest in zip(tem_srcs, out_dests, strict=True):
+        if is_cwd:
+            _rename_old_if_exists(out_dest)
+        shutil.copy2(tem_src, out_dest)
+
+    (output_dir / "include").mkdir(exist_ok=True)
+
+    out_p_mk = output_dir / "project.mk"
+    out_p_mk_lines = out_p_mk.read_text().splitlines()[:-1]  # Exclude "# Add your config here!" line
+    aline = out_p_mk_lines.append
+    aline(f"PROJECT={output_dir.name}")
+    aline(f"BOARD={bsp}")
+    aline(f"TARGET={target}\n")
+    aline("# Add any additional configs here!\n")
+    out_p_mk.write_text("\n".join(out_p_mk_lines))
 
     if include_vscode:
         vscode_src = template_dir / ".vscode"
@@ -128,11 +153,18 @@ def gen_proj(
         ValidationError: If example does not exist
         MsdkError: Arbitrary OS/IO error
     """
-    try:
-        output_dir.mkdir(parents=True)
-        example_dir = _ensure_template_exists(maxim_path, target, template)
+    is_cwd = output_dir.resolve() == Path.cwd()
 
-        _copy_template_files(example_dir, output_dir, include_vscode=include_vscode, target=target, bsp=bsp)
+    try:
+        template_dir = _ensure_template_files_exist(maxim_path, target, template)
+        _copy_template_files(
+            template_dir,
+            output_dir,
+            include_vscode=include_vscode,
+            target=target,
+            bsp=bsp,
+            is_cwd=is_cwd,
+        )
 
         if include_vscode:
             _update_vscode_bsp(output_dir / ".vscode", bsp)

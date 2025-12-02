@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -114,3 +115,31 @@ def validate_maxim_path() -> Path:
         raise ValidationError(msg) from e
 
     return maxpath
+
+
+def ensure_conventional_path_name(name: str, *, desc: str = "file", is_dir: bool = False) -> None:
+    """Ensure path name is valid (r`^[a-zA-Z][a-zA-Z0-9_-]*$"`).
+
+    Args:
+        name: Path name to validate
+
+    Optional Keyword Args:
+        desc: Short description of path to validate
+        is_dir: Whether path is a directory (rather than a file)
+
+    Raises:
+        ValidationError: If path name is invalid
+    """
+
+    if not is_dir:
+        last_dot = name.rfind(".")
+        if last_dot != -1:
+            name = name[:last_dot]
+
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
+        msg = (
+            f"invalid {desc} name: [value]{name}[/]\n\n"
+            f"[note]note:[/] {desc} name must start with a letter and contain only letters, "
+            "numbers, hyphens, and underscores"
+        )
+        raise ValidationError(msg)
