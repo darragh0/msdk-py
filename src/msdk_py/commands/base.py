@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from argparse import ArgumentParser, Namespace
@@ -20,9 +20,9 @@ class BaseCommand(ABC):
 
     __slots__ = ("aliases", "help", "name")
 
-    name: str
-    help: str
-    aliases: tuple[str] | None
+    name: ClassVar[str]
+    help: ClassVar[str]
+    aliases: ClassVar[tuple[str, ...] | None]
 
     @abstractmethod
     def configure_parser(self, parser: ArgumentParser) -> None:

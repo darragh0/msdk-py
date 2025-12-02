@@ -7,3 +7,11 @@ class MsdkError(Exception):
 
 class ValidationError(MsdkError):
     """Input validation errors."""
+
+
+class CannotProceedError(MsdkError):
+    """Cannot proceed with operation."""
+
+
+class MissingToolError(MsdkError):
+    """Missing tool errors (e.g. `git`, `make`)."""

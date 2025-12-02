@@ -43,6 +43,13 @@ class InitCommand(BaseCommand):
 
         arg("--no-vscode", action="store_false", help="Don't include VSCode configuration", dest="include_vscode")
         arg("--no-readme", action="store_false", help="Don't create [file]README.md[/]", dest="include_readme")
+        arg("--no-git", action="store_false", help="Don't initialize git repository", dest="init_git")
+        arg(
+            "--reinit-git",
+            action="store_true",
+            help="Reinitialize existing git repository if it exists",
+            dest="reinit_git",
+        )
         arg(
             "--allow-cwd",
             action="store_true",
@@ -63,14 +70,17 @@ class InitCommand(BaseCommand):
         proj_name = args.project_name.strip()
         validate_proj_name(proj_name, Path.cwd(), allow_cwd=args.allow_cwd)
 
+        proj_dir = Path.cwd() / proj_name
         gen_proj(
             maxim_path=maxim_path,
-            output_dir=Path.cwd() / proj_name,
+            output_dir=proj_dir,
             target=target,
             bsp=args.bsp,
             template=args.template,
             include_vscode=args.include_vscode,
             include_readme=args.include_readme,
+            init_git=args.init_git,
+            reinit_git=args.reinit_git,
         )
 
-        cout(f"[success]project [proj]{args.project_name}[/] created successfully![/]")
+        cout(f"Initialized project [proj]{args.project_name}[/] at [path]{proj_dir}[/]")
