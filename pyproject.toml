@@ -1,0 +1,34 @@
+[project]
+name = "msdk-py"
+version = "0.1.0"
+description = "CLI tool for Maxim SDK project management."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "darragh0" }]
+requires-python = ">=3.12"
+dependencies = ["rich>=13.0.0", "rich-argparse>=1.4.0"]
+keywords = ["maxim", "msdk", "embedded", "cli", "project-management"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Build Tools",
+  "Operating System :: POSIX :: Linux",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/darragh0/msdk-py?tab=readme-ov-file#msdk-py"
+Repository = "https://github.com/darragh0/msdk-py.git"
+Issues = "https://github.com/darragh0/msdk-py/issues"
+#Documentation = ...
+#Changelog = ...
+
+
+[project.scripts]
+msdk = "msdk_py.__main__:main"
+
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
