@@ -1,6 +1,6 @@
 # msdk-py
 
-CLI tool for Maxim SDK project management.
+CLI tool for [Maxim SDK](https://github.com/analogdevicesinc/msdk.git) project management.
 
 Create projects and run build/utility tasks from the command line.
 
@@ -17,7 +17,7 @@ Create projects and run build/utility tasks from the command line.
 
 Install the `msdk` (not `msdk-py`) command globally.
 
-With uv:
+With [uv](https://github.com/astral-sh/uv.git):
 
 ```bash
 uv tool install msdk-py
