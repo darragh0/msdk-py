@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, override
 from msdk_py.commands.base import BaseCommand
 from msdk_py.commands.init.validation import validate_bsp, validate_proj_name, validate_target
 from msdk_py.common.display import cout
+from msdk_py.common.utils import normalize_target
 from msdk_py.common.validation import validate_maxim_path
 
 from .defaults import DEFAULT_BSP, DEFAULT_TEMPLATE
@@ -18,11 +19,12 @@ if TYPE_CHECKING:
 
 
 class InitCommand(BaseCommand):
-    """Initialize MSDK project from SDK example."""
+    """Initialize MSDK project."""
 
     name = "init"
-    help = "Initialize new MSDK project"
+    help = "Initialize new MSDK project."
     aliases = ("new",)
+    has_pos_args = True
 
     @override
     def configure_parser(self, parser: ArgumentParser) -> None:
@@ -44,30 +46,32 @@ class InitCommand(BaseCommand):
         arg("--no-vscode", action="store_false", help="Don't include VSCode configuration", dest="include_vscode")
         arg("--no-readme", action="store_false", help="Don't create [italic]README.md[/]", dest="include_readme")
         arg("--no-git", action="store_false", help="Don't initialize git repository", dest="init_git")
-        arg(
-            "--allow-cwd",
-            action="store_true",
-            help="Allow project to be created in current directory",
-            dest="allow_cwd",
-        )
 
     @override
     def execute(self, args: Namespace) -> None:
-        target = args.target.upper()
-        if target.isdigit():
-            target = f"MAX{target}"
+        target = normalize_target(args.target.upper())
 
         maxim_path = validate_maxim_path()
         validate_target(target, maxim_path)
         validate_bsp(target, args.bsp, maxim_path)
 
-        proj_name = args.project_name.strip()
-        validate_proj_name(proj_name, Path.cwd(), allow_cwd=args.allow_cwd)
+        # Parse as path
+        proj_path = Path(args.project_name).expanduser()
 
-        proj_dir = Path.cwd() / proj_name
+        # Handle "." (cwd) case
+        if proj_path == Path():
+            proj_path = Path.cwd()
+            proj_name = proj_path.name
+        else:
+            proj_path = proj_path.resolve()
+            proj_name = proj_path.name
+
+        # Validate using basename and parent
+        validate_proj_name(proj_name, proj_path.parent)
+
         gen_proj(
             maxim_path=maxim_path,
-            output_dir=proj_dir,
+            output_dir=proj_path,
             target=target,
             bsp=args.bsp,
             template=args.template,
@@ -76,4 +80,4 @@ class InitCommand(BaseCommand):
             init_git=args.init_git,
         )
 
-        cout(f"[success]•[/] Initialized project [proj]{proj_dir.name}[/] at [path]{proj_dir}[/]")
+        cout(f"[success]•[/] Initialized project [proj]{proj_name}[/] at [path]{proj_path}[/]")

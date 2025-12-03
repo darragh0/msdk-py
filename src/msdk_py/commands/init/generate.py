@@ -6,6 +6,7 @@ import subprocess as subproc
 from pathlib import Path
 
 from msdk_py.common.error import CannotProceedError, MissingToolError, MsdkError, ValidationError
+from msdk_py.common.toml_config import write_project_config
 from msdk_py.common.utils import dir_is_empty
 from msdk_py.common.validation import ensure_exists
 
@@ -34,23 +35,6 @@ def _ensure_template_files_exist(maxim_path: Path, target: str, template: str) -
     ensure_exists(template_dir / "project.mk", "template [path]project.mk[/]")
 
     return template_dir
-
-
-def _mk_marker_file(output_dir: Path) -> None:
-    """Create marker file in output directory.
-
-    Args:
-        output_dir: Path to output directory
-    """
-
-    marker_file = output_dir / ".msdk-py-proj"
-    # Don't allow initialization if marker file already exists
-    if marker_file.is_file():
-        msg = "cannot initialize project: [path].msdk-py-proj[/] file already exists"
-        raise CannotProceedError(msg)
-
-    # Create file or update mod time for msdk-py marker file (for later locating project dir)
-    marker_file.touch()
 
 
 def _copy_template_files(
@@ -82,8 +66,6 @@ def _copy_template_files(
 
     if not is_cwd:
         output_dir.mkdir(parents=True)
-
-    _mk_marker_file(output_dir)
 
     inc_out = output_dir / "include"
     src_out = output_dir / "src"
@@ -123,6 +105,20 @@ def _copy_template_files(
         if not vscout_out.exists():
             shutil.copytree(vscode_src, vscout_out)
             _update_vscode_bsp(vscout_out, bsp)
+
+    # Generate TOML config from template's VSCode settings
+    settings_path = template_dir / ".vscode" / "settings.json"
+    if settings_path.exists():
+        with settings_path.open() as f:
+            settings = json.load(f)
+
+        write_project_config(
+            output_dir=output_dir,
+            target=target,
+            board=bsp,
+            project_name=output_dir.resolve().name,
+            settings_json=settings,
+        )
 
 
 def _update_vscode_bsp(vscode_dir: Path, bsp: str) -> None:
@@ -241,6 +237,7 @@ def gen_proj(
         MsdkError: Arbitrary OS/IO error
     """
     is_cwd = output_dir.resolve() == Path.cwd()
+    cleanup_needed = False
 
     try:
         template_dir = _ensure_template_files_exist(maxim_path, target, template)
@@ -264,10 +261,13 @@ def gen_proj(
             _write_git_ignore(output_dir, vscode=include_vscode)
 
     except OSError as e:
-        if output_dir.exists() and not is_cwd:
-            shutil.rmtree(output_dir)
+        cleanup_needed = True
         raise MsdkError(e) from e
     except (ValidationError, CannotProceedError, MissingToolError):
-        if output_dir.exists() and not is_cwd:
-            shutil.rmtree(output_dir)
+        cleanup_needed = True
         raise
+    else:
+        cleanup_needed = False
+    finally:
+        if cleanup_needed and output_dir.exists() and not is_cwd:
+            shutil.rmtree(output_dir)

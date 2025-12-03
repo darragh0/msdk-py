@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -117,46 +116,18 @@ def validate_maxim_path() -> Path:
     return maxpath
 
 
-def ensure_conventional_path_name(name: str, *, desc: str = "file", is_dir: bool = False) -> None:
-    """Ensure path name is valid (r`^[a-zA-Z][a-zA-Z0-9_-]*$"`).
-
-    Args:
-        name: Path name to validate
-
-    Optional Keyword Args:
-        desc: Short description of path to validate
-        is_dir: Whether path is a directory (rather than a file)
-
-    Raises:
-        ValidationError: If path name is invalid
-    """
-
-    if not is_dir:
-        last_dot = name.rfind(".")
-        if last_dot != -1:
-            name = name[:last_dot]
-
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
-        msg = (
-            f"invalid {desc} name: [value]{name}[/]\n\n"
-            f"[note]note:[/] {desc} name must start with a letter and contain only letters, "
-            "numbers, hyphens, and underscores"
-        )
-        raise ValidationError(msg)
-
-
 def ensure_proj_dir() -> None:
     """
-    Ensure cwd is the project directory (with `.msdk-py-proj` marker file).
+    Ensure cwd is the project directory (with `msdk-proj.toml` config file).
 
     Raises:
         ValidationError: If cwd is not the project directory
     """
 
     cwd = Path.cwd()
-    if not (cwd / ".msdk-py-proj").is_file():
+    if not (cwd / "msdk-proj.toml").is_file():
         msg = (
-            f"current directory is not a msdk-py project directory: [path]{cwd}[/]\n\n"
-            "[tip]tip:[/] run [var]msdk init . --allow-cwd[/] to create a new project in the current directory"
+            f"current directory is not a [prog]msdk-py[/] project: [path]{cwd}[/]\n\n"
+            "[tip]tip:[/] run [var]msdk init .[/] to create a new project in the current directory"
         )
         raise ValidationError(msg)

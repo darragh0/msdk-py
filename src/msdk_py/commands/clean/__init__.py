@@ -16,7 +16,7 @@ class CleanCommand(BaseCommand):
     """Clean MSDK project build artifacts."""
 
     name = "clean"
-    help = "Clean build artifacts"
+    help = "Clean build artifacts."
     aliases = ("c",)
 
     @override

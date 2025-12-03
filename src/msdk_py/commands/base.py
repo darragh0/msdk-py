@@ -18,11 +18,12 @@ class BaseCommand(ABC):
         aliases: Optional tuple of alias names
     """
 
-    __slots__ = ("aliases", "help", "name")
+    __slots__ = ()
 
     name: ClassVar[str]
     help: ClassVar[str]
-    aliases: ClassVar[tuple[str, ...] | None]
+    aliases: ClassVar[tuple[str, ...] | None] = None
+    has_pos_args: ClassVar[bool] = False
 
     @abstractmethod
     def configure_parser(self, parser: ArgumentParser) -> None:

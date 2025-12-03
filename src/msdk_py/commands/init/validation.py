@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from msdk_py.commands.init.defaults import DEFAULT_BSP
 from msdk_py.common.error import ValidationError
-from msdk_py.common.validation import ensure_conventional_path_name, ensure_exists
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from msdk_py.common.utils import normalize_target
+from msdk_py.common.validation import ensure_exists
 
 
 def validate_target(target: str, maxim_path: Path) -> None:
@@ -24,10 +22,7 @@ def validate_target(target: str, maxim_path: Path) -> None:
     examples_dir = maxim_path / "Examples"
     ensure_exists(examples_dir, "MaximSDK Examples directory", path_type="dir")
 
-    # If "32655" instead of "MAX32655"
-    if target.isdigit():
-        target = f"MAX{target}"
-
+    target = normalize_target(target)
     target_dir = examples_dir / target
     if not target_dir.exists():
         available = [d.name for d in examples_dir.iterdir() if d.is_dir()]
@@ -56,16 +51,13 @@ def validate_bsp(target: str, bsp: str, maxim_path: Path) -> None:
     target_bsp_dir = maxim_path / "Libraries" / "Boards" / target
     ensure_exists(target_bsp_dir, f"MaximSDK BSP libraries directory for [value]{target}[/]", path_type="dir")
 
-    # If "32655" instead of "MAX32655"
-    if target.isdigit():
-        target = f"MAX{target}"
-
     bsp_dir = target_bsp_dir / bsp
+    check4similar = target_bsp_dir if bsp != DEFAULT_BSP else None
     try:
         ensure_exists(
             bsp_dir,
             f"board support package [path]{bsp}[/] for [value]{target}[/]",
-            check4similar=None if bsp == DEFAULT_BSP else target_bsp_dir,
+            check4similar=check4similar,
             path_type="dir",
         )
     except ValidationError as e:
@@ -74,33 +66,38 @@ def validate_bsp(target: str, bsp: str, maxim_path: Path) -> None:
         raise ValidationError(msg) from e
 
 
-def validate_proj_name(name: str, parent_dir: Path, *, allow_cwd: bool) -> None:
-    """Validate project name is valid and doesn't exist.
+def validate_proj_name(name: str, parent_dir: Path) -> None:
+    """Validate project name is valid and doesn't already exist.
 
     Args:
-        name (str): Project name to validate
-        parent_dir (Path): Parent directory of project
-
-    Keyword Arguments:
-        allow_cwd: Allow project name to be current working directory (when name = ".")
+        name: Project basename
+        parent_dir: Parent directory for project
 
     Raises:
         ValidationError: If project name is invalid or already exists
     """
-
-    is_cwd = name.strip() == "."
-    if not is_cwd:
-        ensure_conventional_path_name(name, desc="project", is_dir=True)
-    elif not allow_cwd:
-        msg = "cannot create project in current working directory: [path].[/] (use [var]--allow-cwd[/] to allow this)"
+    # Check if empty
+    if not name or name.strip() == "":
+        msg = "project name cannot be empty"
         raise ValidationError(msg)
-    else:
-        return
 
-    proj_path = parent_dir / name
-    if proj_path.exists():
+    # Check if parent exists
+    if not parent_dir.exists():
         msg = (
-            f"directory already exists: [path]{proj_path}[/]\n\n"
-            "[tip]tip:[/] choose a different name or remove the existing directory"
+            f"parent directory does not exist: [path]{parent_dir}[/]\n\n"
+            "[tip]tip:[/] create parent directories first or use a different path"
         )
         raise ValidationError(msg)
+
+    # Check if project already exists
+    proj_path = parent_dir / name
+
+    if proj_path.exists() and proj_path.is_file():
+        msg = (
+            f"[path]{proj_path}[/] is a file, not a directory\n\n"
+            "[tip]tip:[/] choose a different name"
+        )
+        raise ValidationError(msg)
+
+    # Allow existing directories (including cwd)
+    # The project config file check will catch re-initialization attempts

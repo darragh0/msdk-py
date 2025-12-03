@@ -10,16 +10,33 @@ from rich_argparse import RichHelpFormatter
 if TYPE_CHECKING:
     from .types import RichConsolePrintKwargs
 
+# Quiet mode state
+_QUIET_MODE = False
+
+
+def set_quiet_mode(enabled: bool) -> None:  # noqa: FBT001
+    """Enable or disable quiet mode (suppresses subprocess output)."""
+    _QUIET_MODE = enabled
+
+
+def is_quiet_mode() -> bool:
+    """Check if quiet mode is enabled."""
+    return _QUIET_MODE
+
+
 # Custom styles for -h/--help
 RichHelpFormatter.styles.update(
     {
         "argparse.args": "cyan",
         "argparse.groups": "green bold",
         "argparse.metavar": "dim cyan",
+        "argparse.usage": "dim cyan",
         "argparse.prog": "cyan bold",
         "argparse.custom": "cyan",
     },
 )
+
+RichHelpFormatter.usage_markup = True
 
 
 # Custom rich tags
@@ -33,6 +50,7 @@ _APP_THEME = Theme(
         "note": "bold bright_yellow",
         "proj": "cyan bold",
         "value": "cyan",
+        "prog": "cyan bold",
     },
 )
 

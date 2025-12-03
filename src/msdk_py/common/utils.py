@@ -11,7 +11,7 @@ from rich.text import Text
 from msdk_py.common.error import CannotProceedError, MissingToolError
 from msdk_py.common.validation import ensure_exists
 
-from .display import cout
+from .display import cout, is_quiet_mode
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,7 +26,19 @@ def dir_is_empty(path: Path) -> bool:
     Returns:
         True if directory is empty else False
     """
-    return any(path.iterdir())
+    return not any(path.iterdir())
+
+
+def normalize_target(target: str) -> str:
+    """Normalize target chip name (prepend MAX if numeric).
+
+    Args:
+        target: Target chip (e.g., "32655" or "MAX32655")
+
+    Returns:
+        Normalized target with MAX prefix
+    """
+    return f"MAX{target}" if target.isdigit() else target
 
 
 def find_maxim_toolchain(maxim_path: Path) -> Path:
@@ -58,9 +70,27 @@ def find_maxim_toolchain(maxim_path: Path) -> Path:
     return toolchain_bin
 
 
+def get_ocd_bin(ocd_path: Path) -> Path:
+    """Get and validate OpenOCD bin directory.
+
+    Args:
+        ocd_path: Path to OpenOCD installation directory
+
+    Returns:
+        Path to OpenOCD bin directory
+
+    Raises:
+        MissingToolError: If bin directory doesn't exist
+    """
+    ocd_bin = ocd_path / "bin"
+    ensure_exists(ocd_bin, "OpenOCD bin directory", path_type="dir")
+    return ocd_bin
+
+
 def _out_stream(pipe: TextIO, style: str) -> None:
     for line in iter(pipe.readline, ""):
-        cout(Text("  |  " + line.rstrip(), style=style))
+        if not is_quiet_mode():
+            cout(Text("  |  " + line.rstrip(), style=style))
     pipe.close()
 
 
@@ -83,7 +113,8 @@ def run_trusted_cmd(cmd: list[str], *, add2path: list[str] | None = None) -> Non
     else:
         env = None
 
-    cout(f"[success]Running command:[/] [bright_white]{' '.join(cmd)}[/]\n[dim]  |[/]")
+    if not is_quiet_mode():
+        cout(f"[success]Running command:[/] [bright_white]{' '.join(cmd)}[/]\n[dim]  |[/]")
 
     proc = sproc.Popen(cmd, stdout=sproc.PIPE, stderr=sproc.PIPE, text=True, env=env)  # noqa: S603
 
@@ -95,9 +126,11 @@ def run_trusted_cmd(cmd: list[str], *, add2path: list[str] | None = None) -> Non
     t_out.join()
     t_err.join()
 
-    cout("  [dim]|[/]")
+    if not is_quiet_mode():
+        cout("  [dim]|[/]")
     if (errno := proc.wait()) != 0:
         msg = f"command returned non-zero exit code: {errno}"
         raise CannotProceedError(msg)
 
-    cout("[success]Succeeded[/]")
+    if not is_quiet_mode():
+        cout("[success]Succeeded[/]")

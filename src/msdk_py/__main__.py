@@ -2,13 +2,16 @@ import sys
 import traceback
 
 from .cli import mkparser
-from .common.display import cerr
+from .common.display import cerr, set_quiet_mode
 from .common.error import CannotProceedError, MissingToolError, MsdkError, ValidationError
 
 
 def main() -> None:
     parser = mkparser()
     args = parser.parse_args()
+
+    if args.quiet:
+        set_quiet_mode(True)
 
     try:
         args.run_cmd(args)

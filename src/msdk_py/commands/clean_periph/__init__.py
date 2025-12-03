@@ -16,7 +16,7 @@ class CleanPeriphCommand(BaseCommand):
     """Clean peripbuild build artifacts."""
 
     name = "clean-periph"
-    help = "Clean peripheral build artifacts"
+    help = "Clean peripheral build artifacts."
     aliases = ("cp",)
 
     @override
